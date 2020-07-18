@@ -11,14 +11,30 @@
 .PARAMETER ExportName
     Used in CSV export name (use company/tenant name)
 .EXAMPLE
-    .\Get-AzureADDNSRecordsCSVExport.ps1 -ExportName "Microsoft"
+    .\Get-AzureADDNSRecordsCSVExport.ps1 -ExportName "Contoso"
 #>
 param(
  	[Parameter(Mandatory = $true)]
 	[String]$ExportName
 )
-Connect-AzureAD
+$isConnectedBefore = $false
+try {
+    Get-AzureADSubscribedSku | Out-Null 
+    Write-Verbose 'Open Azure AD connexion found'
+    $isConnectedBefore = $true
+} catch {} 
+if (-not $isConnectedBefore) {
+    Write-Verbose 'Connecting to Azure AD'
+    Connect-AzureAD
+}
+
 $dateFileString = Get-Date -Format "FileDateTimeUniversal"
 
-$allDNSRecords = Get-AzureADDomain | Get-AzureADDomainServiceConfigurationRecord  | select DnsRecordId, IsOptional, Label, RecordType, SupportedService, Ttl, MailExchange, Preference, Text, CanonicalName, NameTarget, Port, Priority, Protocol, Service, Weight
-$allDNSRecords | Export-Csv -Path "$pwd\AzureADDNSRecordsExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+mkdir -Force "$pwd\$ExportName\" | Out-Null 
+
+Write-Verbose 'Request all Azure domains'' service configuration'
+$allDNSRecords = Get-AzureADDomain | Get-AzureADDomainServiceConfigurationRecord  |`
+ select DnsRecordId, IsOptional, Label, RecordType, SupportedService, Ttl, MailExchange, `
+ Preference, Text, CanonicalName, NameTarget, Port, Priority, Protocol, Service, Weight
+Write-Verbose 'Export to CSV'
+$allDNSRecords | Export-Csv -Path "$pwd\$ExportName\AzureADDNSRecordsExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation

@@ -11,15 +11,34 @@
 .PARAMETER ExportName
     Used in CSV export name (use company/tenant name)
 .EXAMPLE
-    .\Get-AzureADPlanCSVExport.ps1 -ExportName "Microsoft"
+    .\Get-AzureADPlanCSVExport.ps1 -ExportName "Contoso"
 #>
 param(
  	[Parameter(Mandatory = $true)]
 	[String]$ExportName
 )
-Connect-AzureAD
-$dateFileString = Get-Date -Format "FileDateTimeUniversal"
-$allSKUs=Get-AzureADSubscribedSku
+$isConnectedBefore = $false
+try {
+    Get-AzureADSubscribedSku | Out-Null 
+    Write-Verbose 'Open Azure AD connexion detected'
+    $isConnectedBefore = $true
+} catch {} 
+if (-not $isConnectedBefore) {
+    Write-Verbose 'Connecting to Azure AD'
+    Connect-AzureAD
+}
 
+$dateFileString = Get-Date -Format "FileDateTimeUniversal"
+
+mkdir -Force "$pwd\$ExportName\" | Out-Null 
+
+Write-Verbose 'Request all SKU'
+$allSKUs=Get-AzureADSubscribedSku
 $allServicePlans = $allSKUs | Select * -ExpandProperty ServicePlans -ea SilentlyContinue | Select SkuPartNumber, SkuId, AppliesTo, ProvisioningStatus, CapabilityStatus, ConsumedUnits,  ServicePlanId, ServicePlanName -ExpandProperty PrepaidUnits
-$allServicePlans | Export-Csv -Path "$pwd\LicenceExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+Write-Verbose 'Export to CSV'
+$allServicePlans | Export-Csv -Path "$pwd\$ExportName\LicenceExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+
+if (-not $isConnectedBefore) {
+    Write-Verbose 'Disconnecting from Azure AD'
+    Disconnect-AzureAD
+}

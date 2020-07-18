@@ -11,13 +11,26 @@
 .PARAMETER ExportName
     Used in file export name (use company/tenant name)
 .EXAMPLE
-    .\Get-ExoRemoteDomainsCSVExport.ps1 -ExportName "Microsoft"
+    .\Get-ExoRemoteDomainsCSVExport.ps1 -ExportName "Contoso"
 #>
 param(
  	[Parameter(Mandatory = $true)]
-	[String]$ExportName = "TEST"
+	[String]$ExportName
 )
-Connect-EXOPSSession
-$dateFileString = Get-Date -Format "FileDateTimeUniversal"
+$isConnectedBefore = $false
+try {
+    Get-OrganizationConfig | Out-Null 
+    Write-Verbose 'Open Exchange Online Admin connexion detected'
+    $isConnectedBefore = $true
+} catch {} 
+if (-not $isConnectedBefore) {
+    Write-Verbose 'Connecting to Exchange Online Admin center'
+    Connect-EXOPSSession
+}
 
-Get-RemoteDomain | select * | Export-Csv -Path "$pwd\RemoteDomains-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+$dateFileString = Get-Date -Format "FileDateTimeUniversal"
+mkdir -Force "$pwd\$ExportName\" | Out-Null 
+
+Write-Verbose 'Request and export EXO domain settings'
+
+Get-RemoteDomain | select * | Export-Csv -Path "$pwd\$ExportName\RemoteDomains-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation

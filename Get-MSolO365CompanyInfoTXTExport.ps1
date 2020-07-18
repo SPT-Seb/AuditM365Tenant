@@ -18,7 +18,13 @@ param(
  	[Parameter(Mandatory = $true)]
 	[String]$ExportName = "TEST"
 )
-Connect-MsolService
+if (Get-MsolCompanyInformation -ErrorAction SilentlyContinue ) {
+    Write-Verbose 'Open Msol connexion detected'
+}else {
+    Write-Verbose 'Connecting Msol'
+    Connect-MsolService
+}
 $dateFileString = Get-Date -Format "FileDateTimeUniversal"
 
-Get-MsolCompanyInformation | select * > "$pwd\TenantCompanyInfos-$ExportName-$dateFileString.txt"
+mkdir -Force "$pwd\$ExportName\" | Out-Null 
+Get-MsolCompanyInformation | select * > "$pwd\$ExportName\TenantCompanyInfos-$ExportName-$dateFileString.txt"

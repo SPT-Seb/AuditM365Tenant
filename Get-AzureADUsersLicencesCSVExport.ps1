@@ -11,18 +11,35 @@
 .PARAMETER ExportName
     Used in CSV export name (use company/tenant name)
 .EXAMPLE
-    .\Get-AzureADUsersLicencesCSVExport.ps1 -ExportName "Microsoft"
+    .\Get-AzureADUsersLicencesCSVExport.ps1 -ExportName "Contoso"
 #>
 param(
  	[Parameter(Mandatory = $true)]
 	[String]$ExportName
 )
-Connect-AzureAD
+$isConnectedBefore = $false
+try {
+    Get-AzureADSubscribedSku | Out-Null 
+    Write-Verbose 'Open Azure AD connexion detected'
+    $isConnectedBefore = $true
+} catch {} 
+if (-not $isConnectedBefore) {
+    Write-Verbose 'Connecting to Azure AD'
+    Connect-AzureAD
+}
+
 $dateFileString = Get-Date -Format "FileDateTimeUniversal"
 
-$allUsers = Get-AzureADUser -All $true | Select * -ExpandProperty AssignedLicenses | Select ObjectType, Mail, UserPrincipalName, UserType, AccountEnabled, SkuId, @{Name = 'DisabledPlansCount'; Expression = {($_.DisabledPlans).Count}}
+mkdir -Force "$pwd\$ExportName\" | Out-Null 
+
+Write-Verbose 'Request all Users'
+$allUsers = Get-AzureADUser -All $true | Select * -ExpandProperty AssignedLicenses | `
+Select ObjectType, Mail, UserPrincipalName, CompanyName, UserType, AccountEnabled, SkuId, `
+@{Name = 'DisabledPlansCount'; Expression = {($_.DisabledPlans).Count}}
+Write-Verbose 'Request all SKU'
 $licensePlanList = Get-AzureADSubscribedSku
 
+Write-Verbose 'Join Users/SKU'
 $allUsersPlans = @()
 $allUsers | % { 
     $sku=$_.SkuId ; $user = $_;  $licensePlanList | % { 
@@ -32,6 +49,7 @@ $allUsers | % {
 		    $Props = @{
                 "ObjectType" =  $user.ObjectType
                 "Mail" =  $user.Mail
+                "Company" = $user.CompanyName
                 "UserPrincipalName" =  $user.UserPrincipalName
                 "UserType" =  $user.UserType
                 "AccountEnabled" =  $user.AccountEnabled
@@ -43,4 +61,11 @@ $allUsers | % {
     }
 }
 
-$allUsersPlans | Export-Csv -Path "$pwd\UsersPlansExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+Write-Verbose 'Export to CSV'
+$allUsersPlans | Export-Csv -Path `
+"$pwd\$ExportName\UsersPlansExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+
+if (-not $isConnectedBefore) {
+    Write-Verbose 'Disconnecting from Azure AD'
+    Disconnect-AzureAD
+}

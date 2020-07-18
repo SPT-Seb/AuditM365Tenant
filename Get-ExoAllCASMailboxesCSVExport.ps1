@@ -11,13 +11,24 @@
 .PARAMETER ExportName
     Used in CSV export name (use company/tenant name)
 .EXAMPLE
-    .\Get-ExoAllCASMailboxesCSVExport.ps1 -ExportName "Microsoft"
+    .\Get-ExoAllCASMailboxesCSVExport.ps1 -ExportName "Contoso"
 #>
 param(
  	[Parameter(Mandatory = $true)]
-	[String]$ExportName = "TEST"
+	[String]$ExportName
 )
-Connect-EXOPSSession
-$dateFileString = Get-Date -Format "FileDateTimeUniversal"
+$isConnectedBefore = $false
+try {
+    Get-OrganizationConfig | Out-Null 
+    Write-Verbose 'Open Exchange Online Admin connexion detected'
+    $isConnectedBefore = $true
+} catch {} 
+if (-not $isConnectedBefore) {
+    Write-Verbose 'Connecting to Exchange Online Admin center'
+    Connect-EXOPSSession
+}
 
-Get-CASMailbox -ResultSize unlimited | select * | Export-Csv -Path "$pwd\CASMailBoxesExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+$dateFileString = Get-Date -Format "FileDateTimeUniversal"
+mkdir -Force "$pwd\$ExportName\" | Out-Null 
+
+Get-CASMailbox -ResultSize unlimited | select * | Export-Csv -Path "$pwd\$ExportName\CASMailBoxesExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation

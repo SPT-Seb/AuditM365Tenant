@@ -10,19 +10,25 @@
     Source/Inspiration : https://docs.microsoft.com/fr-fr/azure/active-directory/authentication/howto-mfa-userstates
 .PARAMETER ExportName
     Used in CSV export name (use company/tenant name)
- .PARAMETER DomainName
-    Specifies the fully qualified domain name of the domain to be retrieved.   
 .EXAMPLE
-    .\Get-MsolPasswordPolicyCSVExport.ps1 -ExportName "Microsoft" -DomainName "microsoft.com"
+    .\Get-MsolPasswordPolicyCSVExport.ps1 -ExportName "Contoso"
 #>
 param(
  	[Parameter(Mandatory = $true)]
-    [String]$ExportName = "TEST",
-
-    [Parameter(Mandatory = $true)]
-    [String]$DomainName
+    [String]$ExportName
 )
-Connect-MsolService
+if (Get-MsolCompanyInformation -ErrorAction SilentlyContinue ) {
+    Write-Verbose 'Open Msol connexion detected'
+}else {
+    Write-Verbose 'Connecting Msol'
+    Connect-MsolService
+}
 $dateFileString = Get-Date -Format "FileDateTimeUniversal"
 
-Get-MsolPasswordPolicy -DomainName $DomainName | Export-Csv -Path "$pwd\UsersPAsswordPolicyExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+mkdir -Force "$pwd\$ExportName\" | Out-Null 
+
+Write-Verbose 'Request all domains'
+Get-MsolDomain | % {
+    Write-Verbose "Request $($_.Name) domains password policies";
+    Get-MsolPasswordPolicy -DomainName $_.Name
+} | Export-Csv -Path "$pwd\$ExportName\UsersPAsswordPolicyExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation

@@ -15,14 +15,29 @@
 .PARAMETER ExportName
     Used in CSV export name (use company/tenant name)
 .EXAMPLE
-    .\Get-MsolUsersMFAStatusCSVExport.ps1 -ExportName "Microsoft"
+    .\Get-MsolUsersMFAStatusCSVExport.ps1 -ExportName "Contoso"
 #>
 param(
  	[Parameter(Mandatory = $true)]
-	[String]$ExportName = "TEST"
+	[String]$ExportName
 )
-Connect-MsolService
+if (Get-MsolCompanyInformation -ErrorAction SilentlyContinue ) {
+    Write-Verbose 'Open Msol connexion detected'
+}else {
+    Write-Verbose 'Connecting Msol'
+    Connect-MsolService
+}
 $dateFileString = Get-Date -Format "FileDateTimeUniversal"
 
-$allUsersMFAStatus = Get-MsolUser -all | select UserPrincipalName, UserType, ObjectId, WhenCreated, LastPasswordChangeTimestamp, PasswordNeverExpires, PasswordResetNotRequiredDuringActivate, @{N="MFAStatus"; E={ if( $_.StrongAuthenticationRequirements.State -ne $null){ $_.StrongAuthenticationRequirements.State} else { "Disabled"}}}, @{N="MFAMethod"; E={ if( $_.StrongAuthenticationMethods.MethodType -ne $null){ $_.StrongAuthenticationMethods.MethodType}}}, StrongPasswordRequired, StrongAuthenticationProofupTime
-$allUsersMFAStatus | Export-Csv -Path "$pwd\UsersMFAStatusExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+mkdir -Force "$pwd\$ExportName\" | Out-Null 
+
+Write-Verbose 'Request users MFA status and export to CSV'
+Get-MsolUser -all | select UserPrincipalName, UserType, ObjectId, WhenCreated, `
+LastPasswordChangeTimestamp, PasswordNeverExpires, PasswordResetNotRequiredDuringActivate, `
+ValidationStatus, IsLicensed, BlockCredential, `
+@{N="MFAStatus"; E={ if( $_.StrongAuthenticationRequirements.State -ne $null) `
+    { $_.StrongAuthenticationRequirements.State} else { "Disabled"}}}, `
+@{N="MFAMethod"; E={ if( $_.StrongAuthenticationMethods.MethodType -ne $null){ `
+    $_.StrongAuthenticationMethods.MethodType}}}, StrongPasswordRequired, `
+    StrongAuthenticationProofupTime | Export-Csv -Path `
+"$pwd\$ExportName\UsersMFAStatusExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation

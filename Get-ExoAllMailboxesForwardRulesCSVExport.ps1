@@ -11,15 +11,29 @@
 .PARAMETER ExportName
     Used in CSV export name (use company/tenant name)
 .EXAMPLE
-    .\Get-ExoAllMailboxesForwardRulesCSVExport.ps1 -ExportName "Microsoft"
+    .\Get-ExoAllMailboxesForwardRulesCSVExport.ps1 -ExportName "Contoso"
 #>
 param(
  	[Parameter(Mandatory = $true)]
-	[String]$ExportName = "TEST"
+	[String]$ExportName
 )
-Connect-EXOPSSession
-$dateFileString = Get-Date -Format "FileDateTimeUniversal"
+$isConnectedBefore = $false
+try {
+    Get-OrganizationConfig | Out-Null 
+    Write-Verbose 'Open Exchange Online Admin connexion detected'
+    $isConnectedBefore = $true
+} catch {} 
+if (-not $isConnectedBefore) {
+    Write-Verbose 'Connecting to Exchange Online Admin center'
+    Connect-EXOPSSession
+}
 
-Get-Mailbox -ResultSize Unlimited -Filter {(RecipientTypeDetails -ne "DiscoveryMailbox") -and ((ForwardingSmtpAddress -ne $null) -or (ForwardingAddress -ne $null))} `
+$dateFileString = Get-Date -Format "FileDateTimeUniversal"
+mkdir -Force "$pwd\$ExportName\" | Out-Null 
+
+Write-Verbose 'Request and export EXO mailbox with active forward rules'
+
+Get-Mailbox -ResultSize Unlimited -Filter {(RecipientTypeDetails -ne "DiscoveryMailbox") `
+-and ((ForwardingSmtpAddress -ne $null) -or (ForwardingAddress -ne $null))} `
 | select UserPrincipalName, RecipientTypeDetails, ForwardingSmtpAddress, ForwardingAddress `
-| Export-Csv -Path "$pwd\AutomaticForwardMailExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+| Export-Csv -Path "$pwd\$ExportName\AutomaticForwardMailExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation

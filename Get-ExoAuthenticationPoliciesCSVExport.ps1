@@ -11,13 +11,24 @@
 .PARAMETER ExportName
     Used in CSV export name (use company/tenant name)
 .EXAMPLE
-    .\Get-ExoAuthenticationPoliciesCSVExport.ps1 -ExportName "Microsoft"
+    .\Get-ExoAuthenticationPoliciesCSVExport.ps1 -ExportName "Contoso"
 #>
 param(
  	[Parameter(Mandatory = $true)]
-	[String]$ExportName = "TEST"
+	[String]$ExportName 
 )
-Connect-EXOPSSession
-$dateFileString = Get-Date -Format "FileDateTimeUniversal"
+$isConnectedBefore = $false
+try {
+    Get-OrganizationConfig | Out-Null 
+    Write-Verbose 'Open Exchange Online Admin connexion detected'
+    $isConnectedBefore = $true
+} catch {} 
+if (-not $isConnectedBefore) {
+    Write-Verbose 'Connecting to Exchange Online Admin center'
+    Connect-EXOPSSession
+}
 
-Get-AuthenticationPolicy | select * | Export-Csv -Path "$pwd\AuthenticationPoliciesExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+$dateFileString = Get-Date -Format "FileDateTimeUniversal"
+mkdir -Force "$pwd\$ExportName\" | Out-Null 
+
+Get-AuthenticationPolicy | select * | Export-Csv -Path "$pwd\$ExportName\AuthenticationPoliciesExport-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation

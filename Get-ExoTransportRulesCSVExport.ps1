@@ -11,13 +11,28 @@
 .PARAMETER ExportName
     Used in file export name (use company/tenant name)
 .EXAMPLE
-    .\Get-ExoTransportRulesCSVExport.ps1 -ExportName "Microsoft"
+    .\Get-ExoTransportRulesCSVExport.ps1 -ExportName "Contoso"
 #>
 param(
  	[Parameter(Mandatory = $true)]
-	[String]$ExportName = "TEST"
+	[String]$ExportName 
 )
-Connect-EXOPSSession
-$dateFileString = Get-Date -Format "FileDateTimeUniversal"
+$isConnectedBefore = $false
+try {
+    Get-OrganizationConfig | Out-Null 
+    Write-Verbose 'Open Exchange Online Admin connexion detected'
+    $isConnectedBefore = $true
+} catch {} 
+if (-not $isConnectedBefore) {
+    Write-Verbose 'Connecting to Exchange Online Admin center'
+    Connect-EXOPSSession
+}
 
-Get-TransportRule | Select Name, State, Mode, Priority, Comments, Description, IsValid, WhenChanged, Guid | Export-Csv -Path "$pwd\TransportRules-$ExportName-$dateFileString.csv" -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+$dateFileString = Get-Date -Format "FileDateTimeUniversal"
+mkdir -Force "$pwd\$ExportName\" | Out-Null 
+
+Write-Verbose 'Request and export EXO transport rules'
+
+Get-TransportRule | Select Name, State, Mode, Priority, Comments, Description, IsValid, `
+WhenChanged, Guid | Export-Csv -Path "$pwd\$ExportName\TransportRules-$ExportName-$dateFileString.csv" `
+-Delimiter ';' -Encoding UTF8 -NoTypeInformation
