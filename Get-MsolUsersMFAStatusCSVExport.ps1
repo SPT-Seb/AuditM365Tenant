@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Export all Azure AD users' licences in a CSV file in current folder
+    Export all Azure AD users' MFA status
 .DESCRIPTION
     MSOnline PowerShell Module required.
     MFA Status :

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Export all SharePoint Online site collections in a CSV file in current folder
+    Export all SharePoint Online site collections infos
 .DESCRIPTION
     SharePoint Online PowerShell Module required.
 .NOTES
